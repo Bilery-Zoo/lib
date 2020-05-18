@@ -1,0 +1,7 @@
+**.pyc
+**/.idea
+**/__pycache__
+**.csv
+**.xlsx
+config/auth.py
+log

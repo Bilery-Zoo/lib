@@ -1,0 +1,4 @@
+requests
+openpyxl
+azure-storage-blob
+mysql-connector-python
