@@ -4,17 +4,18 @@
 
 """
 author    : Bilery Zoo(bilery.zoo@gmail.com)
-create_ts : 2020-03-03
-program   : *_* MySQL/MariaDB handler utility *_*
+create_ts : 2020-01-01
+program   : *_* MySQL handle utility *_*
 """
+
 
 # import os
 import sys
 from lib import logutil
 from lib import baseutil
 
-logger = logutil.Log().logger()
-# logger = logutil.LOG(filemode=os.path.dirname(os.path.abspath(__file__)) + "/log").logger()
+logger = logutil.LOG().formatted_logger()
+# logger = logutil.LOG(filename=os.path.dirname(os.path.abspath(__file__)) + "/log").logger()
 
 c_flag = False
 
@@ -31,7 +32,7 @@ DBException = _mysql_connector.MySQLInterfaceError if c_flag else mysql.connecto
 
 
 class MDB(object):
-    def __init__(self, use_c_api=True, charset="utf8", use_unicode=False, is_utf8mb4=False, autocommit=False, **kwargs):
+    def __init__(self, use_c_api=False, charset="utf8", use_unicode=False, is_utf8mb4=False, autocommit=False, **kwargs):
         self.use_c_api = use_c_api
         self.charset = charset
         self.use_unicode = use_unicode
@@ -85,9 +86,31 @@ def generate_insert(table, items, database='', is_escape_string=False, con=None,
             sql_l += "`{key}`, ".format(key=column)
             sql_r += "'{value}', ".format(value=data)
     sql = sql_l[0:-2] + sql_r[0:-2] + ");"
-    print(sql)
     return sql
 
+# def generate_insert_sub(_key_list):
+#     statement_l = '('
+#     statement_r = '('
+#     for _ in _key_list:
+#         statement_l = statement_l + '`' + _ + "`, "
+#         statement_r = statement_r + "'%s', "
+#     return statement_l[:-2] + ") VALUES " + statement_r[:-2] + ')'
+
+def generate_insert_sub(_key_list, _value_list):
+    statement_l = '('
+    statement_r = '('
+    for (_, __) in zip(_key_list, _value_list):
+        sub = "'" + __ + "', " if __ is not None else "NULL, "
+        statement_l = statement_l + '`' + _ + "`, "
+        statement_r = statement_r + sub
+    return statement_l[:-2] + ") VALUES " + statement_r[:-2] + ')'
+
+def generate_update_set(_key_list, _value_list):
+    statement = 'SET '
+    for (_, __) in zip(_key_list, _value_list):
+        sub = "'" + __ + "', " if __ is not None else "NULL, "
+        statement = statement + "`" + _ + "` = " + sub
+    return statement[:-2]
 
 def generate_where(items, alias=''):
     """
@@ -99,7 +122,6 @@ def generate_where(items, alias=''):
         statement += " {alias}`{column}` {value} AND".format(alias=alias, column=column, value=items[column])
     return statement[:-4]
 
-
 def generate_group_by(columns, alias=''):
     """
     Generate GROUP BY statement of SQL.
@@ -110,40 +132,34 @@ def generate_group_by(columns, alias=''):
         statement += " {alias}`{column}`,".format(alias=alias, column=column)
     return statement[:-1]
 
-
-@logutil.log(logger=logger)
-def execute_sql_quiet(con, sql, use_c_api=True, is_commit=True, is_close=True, is_exit=False,
-                      is_raise=True, is_info=True):
+# @logutil.Log.log(logger=logger)
+def execute_sql_quiet(con, sql, use_c_api=False, is_commit=True, is_count=False, is_close=False, is_exit=False,
+                      is_raise=True, is_info=False):
     """
     Execute SQL(DDL, DML, DCL etc) in quiet mode(with no return).
     """
     cur = con.cursor() if not use_c_api else None
     try:
-        if use_c_api:
-            con.query(sql)
-        else:
-            cur.execute(sql)
+        if use_c_api: con.query(sql)
+        else: cur.execute(sql)
     except DBException as E:
         con.rollback()
-        if is_exit:
-            sys.exit(E)
-        if is_raise:
-            raise
+        if is_exit: sys.exit(E)
+        if is_raise: raise
     else:
-        if is_commit:
-            con.commit()
+        cnt = con.affected_rows() if use_c_api else cur.rowcount
+        if is_commit: con.commit()
+        if is_count: return cnt
     finally:
         if is_close:
-            if not use_c_api:
-                cur.close()
+            if not use_c_api: cur.close()
             con.close()
         if is_info:
             logger.info(baseutil.combine_lines_str(sql))
 
-
-@logutil.log(logger=logger)
-def execute_sql_return(con, sql, use_c_api=True, dictionary=True, is_close=True, is_exit=False, is_raise=True,
-                       is_info=True, **kwargs):
+# @logutil.Log.log(logger=logger)
+def execute_sql_return(con, sql, use_c_api=False, dictionary=True, is_free=True, is_close=False, is_exit=False, is_raise=True,
+                       is_info=False, **kwargs):
     """
     Execute SQL(DQL) in return mode(with return).
     """
@@ -185,17 +201,18 @@ def execute_sql_return(con, sql, use_c_api=True, dictionary=True, is_close=True,
                 else:
                     yield row
     finally:
+        if is_free:
+            if use_c_api: con.free_result()
+            else: cur.close()
         if is_close:
-            con.free_result()
-            if not use_c_api:
-                cur.close()
+            if use_c_api: con.free_result()
+            else: cur.close()
             con.close()
         if is_info:
             logger.info(baseutil.combine_lines_str(sql))
 
-
-@logutil.log(logger=logger)
-def check_dql_existence(con, sql, use_c_api=True, is_exit=False, is_raise=True, is_close=True, is_info=True):
+# @logutil.Log.log(logger=logger)
+def check_dql_existence(con, sql, use_c_api=False, is_exit=False, is_raise=True, is_free=True, is_close=False, is_info=False):
     """
     Check whether SQL(DQL) query has result to return or not.
     """
@@ -208,23 +225,20 @@ def check_dql_existence(con, sql, use_c_api=True, is_exit=False, is_raise=True, 
             cur.execute(sql)
     except DBException as E:
         con.rollback()
-        if is_exit:
-            sys.exit(E)
-        if is_raise:
-            raise
+        if is_exit: sys.exit(E)
+        if is_raise: raise
     else:
-        if use_c_api:
-            return True if con.fetch_row() else False
-        else:
-            return True if cur.fetchone() else False
+        if use_c_api: return True if con.fetch_row() else False
+        else: return True if cur.fetchone() else False
     finally:
+        if is_free:
+            if use_c_api: con.free_result()
+            else: cur.close()
         if is_close:
-            con.free_result()
-            if not use_c_api:
-                cur.close()
+            if use_c_api: con.free_result()
+            else: cur.close()
             con.close()
-        if is_info:
-            logger.info(baseutil.combine_lines_str(sql))
+        if is_info: logger.info(baseutil.combine_lines_str(sql))
 
 
 if __name__ == "__main__":
@@ -233,7 +247,7 @@ if __name__ == "__main__":
             "host": "localhost",
             "port": 3306,
             "user": "root",
-            "password": "",
+            "password": "1024",
             "database": "information_schema",
         },
         "charset": "utf8",
@@ -241,22 +255,25 @@ if __name__ == "__main__":
         "autocommit": False,
     }
     con_c = MDB(**CON["con"]).mdb_con()
-    con_p = MDB(use_c_api=False, **CON["con"]).mdb_con()
-    print(con_c)
-    items = {
-        "col1": "= 1",
-        "col2": "> 2",
-    }
+    # con_p = MDB(use_c_api=False, **CON["con"]).mdb_con()
+    # print(con_c)
+    # items = {
+    #     "col1": "= 1",
+    #     "col2": "> 2",
+    # }
     # print(generate_insert(table="tab", database="dbs", items=items))
     # print(generate_where(items, "_tmp"))
     # print(generate_group_by(items.keys(), "_tmp"))
     # print(execute_sql_quiet(con_c, "CREATE DATABASE `mdbutil`;"))
     # print(execute_sql_quiet(con_p, "DROP DATABASE `mdbutil`;", use_c_api=False))
-    # sql_t = 'SELECT `TABLE_NAME`, `CREATE_TIME` FROM `information_schema`.`TABLES` LIMIT 2;'
-    # sql_f = 'SELECT `TABLE_NAME`, `CREATE_TIME` FROM `information_schema`.`TABLES` WHERE `TABLE_NAME` = "IS" LIMIT 2;'
+    sql_t = 'SELECT `TABLE_NAME` FROM `information_schema`.`TABLES` LIMIT 2;'
+    sql_f = 'SELECT `TABLE_NAME`, `CREATE_TIME` FROM `information_schema`.`TABLES` WHERE `TABLE_NAME` = "IS" LIMIT 2;'
     # print(check_dql_existence(con_p, sql_f, use_c_api=False))
     # print(check_dql_existence(con_c, sql_t))
     # for r in execute_sql_return(con_p, sql_t, use_c_api=False, is_info=False, dictionary=True):
     #     print(r)
-    # for r in execute_sql_return(con_c, sql_t, use_c_api=True, is_info=False, dictionary=False):
+    # for r in execute_sql_return(con_c, sql_t, use_c_api=False, is_info=False, dictionary=False):
     #     print(r)
+    # print(execute_sql_return(con_c, sql_f, use_c_api=False, is_info=False, dictionary=False).next())
+    print(generate_update_set(['a', 'b'], ['a', None]))
+    print(generate_insert_sub(['a', 'b'], ['b', None]))
