@@ -267,7 +267,7 @@ if __name__ == "__main__":
     # print(execute_sql_quiet(con_c, "CREATE DATABASE `mdbutil`;"))
     # print(execute_sql_quiet(con_p, "DROP DATABASE `mdbutil`;", use_c_api=False))
     sql_t = 'SELECT `TABLE_NAME` FROM `information_schema`.`TABLES` LIMIT 2;'
-    sql_f = 'SELECT `TABLE_NAME`, `CREATE_TIME` FROM `information_schema`.`TABLES` WHERE `TABLE_NAME` = "IS" LIMIT 2;'
+    sql_f = 'SELECT `TABLE_NAME`, `CREATE_TIME` FROM `information_schema`.`TABLES` WHERE `TABLE_NAME` = "I" LIMIT 2;'
     # print(check_dql_existence(con_p, sql_f, use_c_api=False))
     # print(check_dql_existence(con_c, sql_t))
     # for r in execute_sql_return(con_p, sql_t, use_c_api=False, is_info=False, dictionary=True):
