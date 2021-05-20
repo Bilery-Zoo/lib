@@ -5,7 +5,7 @@
 """
 author    : Bilery Zoo(bilery.zoo@gmail.com)
 create_ts : 2020-01-01
-program   : *_* Microsoft Azure Blob service utility *_*
+program   : *_* base function utility *_*
 """
 
 
