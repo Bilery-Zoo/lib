@@ -1,6 +1,6 @@
 # wget ftp://ftp.pbone.net/mirror/archive.fedoraproject.org/epel/7.2020-04-20/x86_64/Packages/p/python2-pip-8.1.2-12.el7.noarch.rpm
 # yum localinstall python2-pip-8.1.2-12.el7.noarch.rpm
-requests==2.23.0
+requests==2.31.0
 openpyxl==2.6.4
 azure-storage-blob==12.3.1
 mysql-connector-python==8.0.19
